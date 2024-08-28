@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "mysql-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model EoullimUser {
+  // 유저 고유 id (한움과 동일)
+  id BigInt @id @default(autoincrement())
+
+  EoullimPayments EoullimPayments[]
+}
+
+enum EoullimBalanceTypes {
+  personal
+  booth
+}
+
+model EoullimBalances {
+  // 잔고 고유 id
+  id BigInt @id @default(autoincrement())
+
+  // 사용자 id
+  userId BigInt?
+
+  // 부스 id 
+  boothId BigInt?
+
+  // 잔고 정산 후 총 잔액
+  amount BigInt @default(0)
+
+  // 잔고 타입 
+  type EoullimBalanceTypes @default(personal)
+}
+
+model EoullimBooths {
+  // 부스 고유 id
+  id BigInt @id @default(autoincrement())
+
+  // 부스 토큰 
+  token String @unique
+
+  // 부스 구분 
+  class String
+
+  // 부스명
+  name String
+
+  // 위치 
+  location String
+
+  // 생성 일시 
+  createdAt DateTime @default(now())
+
+  // 수정 일시 
+  updatedAt DateTime @updatedAt
+
+  EoullimPayments EoullimPayments[]
+}
+
+enum EoullimPaymentsStatus {
+  paid
+  refunded
+}
+
+model EoullimPayments {
+  // 결제 고유번호 
+  id BigInt @id @default(autoincrement())
+
+  // 유저 id 
+  userId BigInt
+
+  // 부스 id
+  boothId BigInt
+
+  // 유저 잔고 id 
+  userBalanceId BigInt
+
+  // 결제 부스 잔고 id 
+  boothBalanceId BigInt
+
+  // 결제 금액 
+  paidAmount BigInt
+
+  // 환불 금액 (미환불 시 null)
+  refundedAmount BigInt?
+
+  // 결제 트랜잭션 id 
+  paymentsTransactionId BigInt
+
+  // 환불 트랜잭션 id 
+  refundTransactionId BigInt?
+
+  // 결제 코멘트 
+  paymentComment String
+
+  // 환불 코멘트 
+  refundComment String
+
+  // 결제 상태
+  status EoullimPaymentsStatus
+
+  // 환불 시간 
+  refundedTime DateTime?
+
+  user  EoullimUser   @relation(fields: [userId], references: [id])
+  booth EoullimBooths @relation(fields: [boothId], references: [id])
+}
+
+model EoullimTransaction {
+  // 트랜잭션 고유 id
+  id BigInt @id @default(autoincrement())
+
+  // 송금자 ID , 환전소의 경우 NULL 
+  senderId BigInt?
+
+  // 수신자 ID 
+  reciverId BigInt
+
+  // 송금액 
+  amount BigInt
+
+  // 코멘트 
+  comment String
+
+  // 트랜잭션 시간 
+  time DateTime @default(now())
+}
