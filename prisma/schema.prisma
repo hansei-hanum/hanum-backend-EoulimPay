@@ -117,6 +117,11 @@ model EoullimPayments {
   booth EoullimBooths @relation(fields: [boothId], references: [id])
 }
 
+enum TransactionTypes {
+  exchange
+  payment
+}
+
 model EoullimTransactions {
   // 트랜잭션 고유 id
   id BigInt @id @default(autoincrement())
@@ -125,7 +130,7 @@ model EoullimTransactions {
   senderId BigInt?
 
   // 수신자 ID 
-  reciverId BigInt
+  receiverId BigInt
 
   // 송금액 
   amount BigInt
@@ -135,4 +140,7 @@ model EoullimTransactions {
 
   // 트랜잭션 시간 
   time DateTime @default(now())
+
+  // 트랜잭션 구분 
+  type TransactionTypes
 }
