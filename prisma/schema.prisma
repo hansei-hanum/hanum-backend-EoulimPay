@@ -113,6 +113,9 @@ model EoullimPayments {
   // 환불 시간 
   refundedTime DateTime?
 
+  // 결제 시간
+  paidTime DateTime @default(now())
+
   // user  EoullimUser   @relation(fields: [userId], references: [id])
   booth EoullimBooths @relation(fields: [boothId], references: [id])
 }

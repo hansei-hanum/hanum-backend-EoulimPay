@@ -1,6 +1,10 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { BalanceService } from './balance.service';
-import { ExchangeRequest } from './dto/balance.dto';
+import {
+  ExchangeRequest,
+  RefundRequest,
+  PaymentRequest,
+} from './dto/balance.dto';
 
 @Controller('balance')
 export class BalanceController {
@@ -12,7 +16,12 @@ export class BalanceController {
   }
 
   @Post('/payment')
-  async payment(@Body() PaymentDto: any) {
+  async payment(@Body() PaymentDto: PaymentRequest) {
     return this.balanceService.EoullimPayment(PaymentDto);
+  }
+
+  @Post('/refund')
+  async refund(@Body() RefundDto: RefundRequest) {
+    return this.balanceService.EoullimRefund(RefundDto);
   }
 }

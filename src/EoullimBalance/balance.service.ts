@@ -1,6 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { BalanceRepository } from 'src/repository/BalanceRepository';
-import { ExchangeRequest, PaymentRequest } from './dto/balance.dto';
+import {
+  ExchangeRequest,
+  PaymentRequest,
+  RefundRequest,
+} from './dto/balance.dto';
 
 @Injectable()
 export class BalanceService {
@@ -48,6 +52,22 @@ export class BalanceService {
 
     return {
       message: 'success',
+    };
+  }
+
+  public async EoullimRefund(data: RefundRequest) {
+    const { transactionId, comment = 'NO_COMMENT_PROVIDED' } = data;
+
+    const refundRes = await this.repository.EoullimPaymentRefund(
+      BigInt(transactionId),
+      comment,
+    );
+
+    return {
+      message: 'success',
+      data: {
+        updatedUserAmount: refundRes.data.user.amount.toString(),
+      },
     };
   }
 }

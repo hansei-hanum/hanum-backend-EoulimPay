@@ -184,4 +184,77 @@ export class BalanceRepository {
 
     return true;
   }
+
+  public async EoullimPaymentRefund(
+    paymentId: bigint,
+    comment: string = 'NO_COMMENT_PROVIDED',
+  ) {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        if (!paymentId) {
+          throw new BadRequestException('PAYMENT_ID_NOT_PROVIDED');
+        }
+
+        const payments = await prisma.eoullimPayments.findFirst({
+          where: {
+            id: paymentId,
+          },
+          select: {
+            id: true,
+            userBalanceId: true,
+            boothBalanceId: true,
+            paidAmount: true,
+          },
+        });
+
+        if (!payments) {
+          throw new BadRequestException('PAYMENT_NOT_FOUND');
+        }
+
+        if (payments.paidAmount <= 0) {
+          throw new BadRequestException('INVALID_REFUND_AMOUNT');
+        }
+
+        const incrementedUserBalance = await prisma.eoullimBalances.update({
+          where: {
+            id: payments.userBalanceId,
+          },
+          data: {
+            amount: { increment: payments.paidAmount },
+          },
+        });
+
+        await prisma.eoullimBalances.update({
+          where: {
+            id: payments.boothBalanceId,
+          },
+          data: {
+            amount: { decrement: payments.paidAmount },
+          },
+        });
+
+        await prisma.eoullimPayments.update({
+          where: {
+            id: paymentId,
+          },
+          data: {
+            status: 'refunded',
+            refundComment: comment,
+          },
+        });
+
+        return {
+          message: 'success',
+          data: {
+            user: {
+              amount: incrementedUserBalance.amount,
+            },
+          },
+        };
+      });
+    } catch (e) {
+      console.log(e.message);
+      throw new BadRequestException('REFUND_FAILED');
+    }
+  }
 }

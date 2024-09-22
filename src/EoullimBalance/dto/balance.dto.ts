@@ -18,3 +18,11 @@ export class PaymentRequest {
   @IsNumber()
   amount: number;
 }
+
+export class RefundRequest {
+  @IsNumber()
+  transactionId: number;
+
+  @IsString()
+  comment?: string;
+}
