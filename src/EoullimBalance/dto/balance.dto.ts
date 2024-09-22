@@ -10,3 +10,11 @@ export class ExchangeRequest {
   @IsNumber()
   amount: number;
 }
+
+export class PaymentRequest {
+  @IsString()
+  boothToken: string;
+
+  @IsNumber()
+  amount: number;
+}

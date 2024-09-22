@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { BalanceRepository } from 'src/repository/BalanceRepository';
-import { ExchangeRequest } from './dto/balance.dto';
+import { ExchangeRequest, PaymentRequest } from './dto/balance.dto';
 
 @Injectable()
 export class BalanceService {
@@ -9,19 +9,45 @@ export class BalanceService {
   async EoullimExchange(data: ExchangeRequest) {
     const { userId, comment, amount } = data;
 
-    const userBalance = await this.repository.EnsurePersonalBalance(userId);
-    const exchangeRes = await this.repository.ExchangeTransfer(
+    const userBalance = await this.repository.EnsurePersonalBalance(
+      BigInt(userId),
+    );
+
+    await this.repository.EoullimTransaction(
+      null,
       userBalance.balanceId,
-      comment,
       amount,
+      comment,
+    );
+
+    return {
+      message: 'SUCCESS',
+    };
+  }
+
+  async EoullimPayment(data: PaymentRequest) {
+    const { boothToken, amount } = data;
+
+    const boothId = await this.repository.getBoothBalanceId(boothToken);
+
+    const paymentRes = await this.repository.EoullimTransaction(
+      BigInt(2), // senderId
+      boothId, // receiverId
+      amount, // amount
+      '정상 결제', // message
+    );
+
+    await this.repository.CreatePaymentRecord(
+      BigInt(2), // dummy sender id
+      boothId, // receiverId
+      BigInt(paymentRes.sender.senderBalanceId.id),
+      BigInt(paymentRes.receiver.receiverBalanceId.id),
+      BigInt(amount),
+      paymentRes.transactionId,
     );
 
     return {
       message: 'success',
-      data: {
-        amount: exchangeRes.amount,
-        comment: exchangeRes.comment,
-      },
     };
   }
 }

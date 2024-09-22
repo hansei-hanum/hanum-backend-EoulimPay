@@ -10,4 +10,9 @@ export class BalanceController {
   async exchange(@Body() ExchangeDto: ExchangeRequest) {
     return this.balanceService.EoullimExchange(ExchangeDto);
   }
+
+  @Post('/payment')
+  async payment(@Body() PaymentDto: any) {
+    return this.balanceService.EoullimPayment(PaymentDto);
+  }
 }

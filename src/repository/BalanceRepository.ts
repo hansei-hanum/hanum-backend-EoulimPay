@@ -23,7 +23,7 @@ export class BalanceRepository {
     };
   }
 
-  public async EnsurePersonalBalance(userId: number) {
+  public async EnsurePersonalBalance(userId: bigint) {
     const userBalance = await this.prisma.eoullimBalances.findFirst({
       where: {
         userId: userId,
@@ -53,8 +53,8 @@ export class BalanceRepository {
     };
   }
 
-  private async EoullimTransaction(
-    senderId: bigint,
+  public async EoullimTransaction(
+    senderId: bigint | null,
     receiverId: bigint,
     amount: number,
     message: string,
@@ -63,63 +63,125 @@ export class BalanceRepository {
       throw new BadRequestException('SENDER_ID_EQUALS_RECEVER_ID');
     }
 
-    if (amount <= 0) {
+    if (amount <= 0 || !amount) {
       throw new BadRequestException('INVALID_TRANSFER_AMOUNT');
     }
 
-    let decrementedSenderBalance: any = null;
+    return await this.prisma.$transaction(async (prisma) => {
+      let decrementedSenderBalance: any = null;
+      let incrementedReceiverBalance: any;
 
-    if (senderId !== null) {
       let senderBalance: any;
-      [senderBalance] = await this.prisma
-        .$queryRaw`SELECT * FROM EoullimBalances WHERE id = ${senderId} FOR UPDATE`;
+      let receiverBalance: any;
 
-      if (senderBalance.amount <= 0 || senderBalance.amount < amount) {
-        throw new BadRequestException('NOT_ENOUGH_BALANCE');
+      if (senderId !== null) {
+        [senderBalance] =
+          await prisma.$queryRaw`SELECT * FROM EoullimBalances WHERE id = ${senderId} FOR UPDATE`;
+
+        if (senderBalance.amount <= 0 || senderBalance.amount < amount) {
+          throw new BadRequestException('NOT_ENOUGH_BALANCE');
+        }
+
+        decrementedSenderBalance = await prisma.eoullimBalances.update({
+          where: {
+            id: BigInt(senderId),
+          },
+          data: {
+            amount: { decrement: amount },
+          },
+        });
       }
 
-      decrementedSenderBalance = await this.prisma.eoullimBalances.update({
-        where: {
-          id: senderId,
-        },
-        data: {
-          amount: { decrement: amount },
-        },
-      });
-    }
+      [receiverBalance] =
+        await prisma.$queryRaw`SELECT * FROM EoullimBalances WHERE id = ${receiverId} FOR UPDATE`;
 
-    let receiverBalance: any;
-    [receiverBalance] = await this.prisma
-      .$queryRaw`SELECT * FROM EoullimBalances WHERE id = ${receiverId} FOR UPDATE`;
+      if (!receiverBalance) {
+        throw new BadRequestException('RECEIVER_BALANCE_NOT_FOUND');
+      }
 
-    if (!receiverBalance) {
-      throw new BadRequestException('RECEIVER_BALANCE_NOT_FOUND');
-    }
-
-    const incrementedReceiverBalance = await this.prisma.eoullimBalances.update(
-      {
+      incrementedReceiverBalance = await prisma.eoullimBalances.update({
         where: {
           id: receiverId,
         },
         data: {
           amount: { increment: amount },
         },
-      },
-    );
+      });
 
-    const transaction = await this.prisma.eoullimTransactions.create({
-      data: {
-        senderId: senderId,
-        receiverId: receiverId,
-        amount: amount,
-        comment: message,
+      const transaction = await prisma.eoullimTransactions.create({
+        data: {
+          senderId: senderId,
+          receiverId: receiverId,
+          amount: amount,
+          comment: message,
+          type: 'payment',
+        },
+      });
+      return {
+        transactionId: transaction.id,
+        transactionTime: transaction.time,
+        sender: {
+          senderId: senderId,
+          senderBalanceId: senderBalance,
+        },
+        receiver: {
+          receiverId: receiverId,
+          receiverBalanceId: receiverBalance,
+        },
+        paidAmount: amount,
+      };
+    });
+  }
+
+  public async getBoothBalanceId(boothToken: string) {
+    const booth = await this.prisma.eoullimBooths.findFirst({
+      where: {
+        token: boothToken,
+      },
+      select: {
+        id: true,
       },
     });
-    return {
-      transactionId: transaction.id,
-      transactionTime: transaction.time,
-      senderAmount: senderId !== null ? decrementedSenderBalance.amount : null,
-      receiverAmount: incrementedReceiverBalance.amount,
-    };
+
+    if (!booth) {
+      throw new BadRequestException('BOOTH_NOT_FOUND');
+    }
+
+    const boothBalance = await this.prisma.eoullimBalances.findFirst({
+      where: {
+        boothId: booth.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!boothBalance) {
+      throw new BadRequestException('BOOTH_BALANCE_NOT_FOUND');
+    }
+
+    return boothBalance.id;
+  }
+
+  public async CreatePaymentRecord(
+    userId: bigint,
+    boothId: bigint,
+    userBalanceId: bigint,
+    boothBalanceId: bigint,
+    paidAmount: bigint,
+    paymentTransactionId: bigint,
+  ) {
+    await this.prisma.eoullimPayments.create({
+      data: {
+        userId: userId,
+        boothId: boothId,
+        userBalanceId: userBalanceId,
+        boothBalanceId: boothBalanceId,
+        paidAmount: paidAmount,
+        paymentsTransactionId: paymentTransactionId,
+      },
+    });
+
+    return true;
   }
 }

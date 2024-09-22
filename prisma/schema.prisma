@@ -13,12 +13,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model EoullimUser {
-  // 유저 고유 id (한움과 동일)
-  id BigInt @id @default(autoincrement())
+// model EoullimUser {
+//   // 유저 고유 id (한움과 동일)
+//   id BigInt @id @default(autoincrement())
 
-  EoullimPayments EoullimPayments[]
-}
+//   EoullimPayments EoullimPayments[]
+// }
 
 enum EoullimBalanceTypes {
   personal
@@ -62,7 +62,7 @@ model EoullimBooths {
   createdAt DateTime @default(now())
 
   // 수정 일시 
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime? @updatedAt
 
   EoullimPayments EoullimPayments[]
 }
@@ -102,18 +102,18 @@ model EoullimPayments {
   refundTransactionId BigInt?
 
   // 결제 코멘트 
-  paymentComment String
+  paymentComment String?
 
   // 환불 코멘트 
-  refundComment String
+  refundComment String?
 
   // 결제 상태
-  status EoullimPaymentsStatus
+  status EoullimPaymentsStatus @default(paid)
 
   // 환불 시간 
   refundedTime DateTime?
 
-  user  EoullimUser   @relation(fields: [userId], references: [id])
+  // user  EoullimUser   @relation(fields: [userId], references: [id])
   booth EoullimBooths @relation(fields: [boothId], references: [id])
 }
 
@@ -142,5 +142,5 @@ model EoullimTransactions {
   time DateTime @default(now())
 
   // 트랜잭션 구분 
-  type TransactionTypes
+  type TransactionTypes 
 }
